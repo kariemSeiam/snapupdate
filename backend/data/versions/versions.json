@@ -1,0 +1,10 @@
+{
+  "1.0": {
+    "versionName": "1.0",
+    "versionCode": 1,
+    "releaseNotes": "Reset to start new version cycle - Reset to 1.0",
+    "isForceUpdate": false,
+    "downloadUrl": "http://192.168.1.202:5000/api/v1/download/1.0",
+    "createdAt": "2025-08-06T20:13:29.778979Z"
+  }
+}

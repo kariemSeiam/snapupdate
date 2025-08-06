@@ -96,7 +96,7 @@ This guide will help you create GitHub releases for the 3 versions of SnapUpdate
 
 ## 🔗 Download
 - **APK File**: SnapUpdate-v1.0.apk
-- **Size**: ~2.5 MB
+- **Size**: ~17.2 MB
 - **Package**: com.pigo.snapupdate
 ```
 
@@ -125,7 +125,7 @@ This guide will help you create GitHub releases for the 3 versions of SnapUpdate
 
 ## 🔗 Download
 - **APK File**: SnapUpdate-v1.1.apk
-- **Size**: ~2.8 MB
+- **Size**: ~17.2 MB
 - **Package**: com.pigo.snapupdate
 ```
 
@@ -159,7 +159,7 @@ This guide will help you create GitHub releases for the 3 versions of SnapUpdate
 
 ## 🔗 Download
 - **APK File**: SnapUpdate-v1.2.apk
-- **Size**: ~3.0 MB
+- **Size**: ~17.2 MB
 - **Package**: com.pigo.snapupdate
 ```
 

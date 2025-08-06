@@ -55,7 +55,7 @@
 
 ## 🔗 Download
 - **APK File**: SnapUpdate-v1.1.apk
-- **Size**: ~2.8 MB
+- **Size**: ~17.2 MB
 - **Package**: com.pigo.snapupdate
 
 ## 🐛 Bug Fixes

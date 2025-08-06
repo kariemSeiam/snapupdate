@@ -18,6 +18,9 @@ import com.pigo.snapupdate.utils.Logger
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import java.io.File
+import android.os.Environment
+import android.content.pm.PackageManager
 
 data class UpdateUiState(
     val isLoading: Boolean = false,
@@ -29,7 +32,8 @@ data class UpdateUiState(
     val downloadStatus: DownloadStatus = DownloadStatus.Pending,
     val isDownloading: Boolean = false,
     val serverVersion: ServerVersionInfo? = null,
-    val isIncrementingVersion: Boolean = false
+    val isIncrementingVersion: Boolean = false,
+    val updateCycleStatus: String = ""
 )
 
 class UpdateViewModel(
@@ -43,54 +47,375 @@ class UpdateViewModel(
     val uiState: StateFlow<UpdateUiState> = _uiState.asStateFlow()
     
     private val currentVersionCode = 1 // Hardcoded for demo
+    private val currentVersionName = "1.0" // Hardcoded for demo
     private var currentDownloadId: Long = -1
     
     init {
         Logger.i("🚀 UpdateViewModel initialized")
-        checkForUpdates()
-        getServerVersion()
+        startUpdateCycle()
     }
     
-    fun checkForUpdates() {
+    /**
+     * 🎯 EXPERT UPDATE CYCLE - Follows backend logic perfectly
+     */
+    fun startUpdateCycle() {
         viewModelScope.launch {
             try {
-                Logger.i("🔍 Checking for updates...")
-                _uiState.update { it.copy(isLoading = true, error = null) }
+                Logger.i("🔄 Starting expert update cycle...")
+                _uiState.update { 
+                    it.copy(
+                        isLoading = true, 
+                        error = null,
+                        updateCycleStatus = "🔄 Checking for updates..."
+                    )
+                }
                 
-                val updateResponse = apiService.checkForUpdates()
-                Logger.i("📡 Received update response: ${updateResponse.message ?: "Update available"}")
+                // Step 1: Get server version info
+                val serverVersion = apiService.getCurrentServerVersion()
+                Logger.i("📊 Server version: ${serverVersion.currentVersion}")
                 
-                if (updateResponse.hasUpdate()) {
-                    val updateInfo = updateResponse.toUpdateInfo()
-                    Logger.i("🎯 Update available: ${updateInfo?.versionName}")
+                _uiState.update { 
+                    it.copy(
+                        serverVersion = serverVersion,
+                        updateCycleStatus = "📊 Server version: ${serverVersion.currentVersion}"
+                    )
+                }
+                
+                // Step 2: Compare versions
+                val currentVersion = getAppVersion(context) ?: currentVersionName
+                val serverVersionName = serverVersion.currentVersion
+                
+                Logger.i("🔍 Version comparison: Current=$currentVersion, Server=$serverVersionName")
+                _uiState.update { 
+                    it.copy(
+                        updateCycleStatus = "🔍 Comparing versions: $currentVersion vs $serverVersionName"
+                    )
+                }
+                
+                // Step 3: Check if update is needed
+                if (isUpdateNeeded(currentVersion, serverVersionName)) {
+                    Logger.i("✅ Update needed: $currentVersion -> $serverVersionName")
                     _uiState.update { 
                         it.copy(
-                            isLoading = false,
-                            updateInfo = updateInfo,
-                            showUpdateDialog = true
+                            updateCycleStatus = "✅ Update needed: $currentVersion -> $serverVersionName"
                         )
                     }
+                    
+                    // Step 4: Check if APK exists in storage
+                    val apkFileName = "SnapUpdate-v$serverVersionName.apk"
+                    val apkFile = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), apkFileName)
+                    
+                    Logger.i("📦 Checking for APK in storage: ${apkFile.absolutePath}")
+                    if (apkFile.exists() && apkFile.length() > 1024 * 1024) {
+                        Logger.i("📦 APK exists in storage: ${apkFile.absolutePath} (${apkFile.length()} bytes)")
+                        _uiState.update { 
+                            it.copy(
+                                updateCycleStatus = "📦 APK found in storage, installing directly..."
+                            )
+                        }
+                        
+                        // Install directly from storage
+                        installApkFromStorage(apkFile)
+                    } else {
+                        Logger.i("📥 APK not found in storage, downloading...")
+                        _uiState.update { 
+                            it.copy(
+                                updateCycleStatus = "📥 APK not found, downloading from GitHub..."
+                            )
+                        }
+                        
+                        // Download from GitHub
+                        downloadAndInstallUpdate(serverVersionName)
+                    }
                 } else {
-                    Logger.i("✅ No update available")
+                    Logger.i("✅ No update needed - current version is up to date")
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
-                            updateInfo = null
+                            updateCycleStatus = "✅ No update needed - up to date"
                         )
                     }
                 }
+                
             } catch (e: Exception) {
-                Logger.e("❌ Error checking for updates", e)
+                Logger.e("❌ Error in update cycle", e)
+                val errorMessage = when {
+                    e.message?.contains("Failed to connect") == true -> 
+                        "Cannot connect to update server. Please check your internet connection."
+                    e.message?.contains("timeout") == true -> 
+                        "Connection timeout. Please try again."
+                    e.message?.contains("404") == true -> 
+                        "Update server not found. Please check server configuration."
+                    else -> "Update cycle failed: ${e.message}"
+                }
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        error = "Failed to check for updates: ${e.message}"
+                        error = errorMessage,
+                        updateCycleStatus = "❌ Update cycle failed"
                     )
                 }
             }
         }
     }
     
+    /**
+     * 🎯 Check if update is needed based on version comparison
+     */
+    private fun isUpdateNeeded(currentVersion: String, serverVersion: String): Boolean {
+        return try {
+            val currentParts = currentVersion.split(".")
+            val serverParts = serverVersion.split(".")
+            
+            // Compare major version first
+            val currentMajor = currentParts[0].toInt()
+            val serverMajor = serverParts[0].toInt()
+            
+            if (currentMajor < serverMajor) return true
+            if (currentMajor > serverMajor) return false
+            
+            // If major versions are equal, compare minor version
+            val currentMinor = currentParts[1].toInt()
+            val serverMinor = serverParts[1].toInt()
+            
+            currentMinor < serverMinor
+        } catch (e: Exception) {
+            Logger.e("❌ Error comparing versions", e)
+            false
+        }
+    }
+    
+    /**
+     * 📦 Install APK directly from storage
+     */
+    private fun installApkFromStorage(apkFile: File) {
+        viewModelScope.launch {
+            try {
+                Logger.i("🔧 Installing APK from storage: ${apkFile.absolutePath}")
+                _uiState.update { 
+                    it.copy(
+                        updateCycleStatus = "🔧 Installing from storage...",
+                        isLoading = false
+                    )
+                }
+                
+                // Validate APK file
+                if (apkFile.length() < 1024 * 1024) {
+                    Logger.e("❌ APK file is too small: ${apkFile.length()} bytes")
+                    _uiState.update { 
+                        it.copy(
+                            error = "Invalid APK file in storage",
+                            updateCycleStatus = "❌ Invalid APK in storage"
+                        )
+                    }
+                    return@launch
+                }
+                
+                // Install the APK
+                installManager.installApkFile(apkFile)
+                
+                _uiState.update { 
+                    it.copy(
+                        updateCycleStatus = "✅ Installation started from storage"
+                    )
+                }
+                
+            } catch (e: Exception) {
+                Logger.e("❌ Error installing from storage", e)
+                _uiState.update { 
+                    it.copy(
+                        error = "Failed to install from storage: ${e.message}",
+                        updateCycleStatus = "❌ Installation failed"
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * 📥 Download and install update from GitHub
+     */
+    private fun downloadAndInstallUpdate(serverVersion: String) {
+        viewModelScope.launch {
+            try {
+                Logger.i("📥 Starting download for version: $serverVersion")
+                _uiState.update { 
+                    it.copy(
+                        showInstallDialog = true,
+                        isDownloading = true,
+                        downloadProgress = 0,
+                        downloadStatus = DownloadStatus.Pending,
+                        updateCycleStatus = "📥 Downloading from GitHub..."
+                    )
+                }
+                
+                // Create GitHub download URL directly
+                val githubDownloadUrl = "https://github.com/kariemSeiam/snapupdate/raw/refs/heads/master/backend/data/apks/SnapUpdate-v$serverVersion.apk"
+                Logger.i("🎯 Using GitHub download URL: $githubDownloadUrl")
+                
+                // Start download
+                val downloadId = downloadManager.downloadApk(githubDownloadUrl, "SnapUpdate-v$serverVersion.apk")
+                currentDownloadId = downloadId
+                Logger.i("🚀 Download started with ID: $downloadId")
+                
+                // Monitor download
+                installManager.monitorDownload(downloadId).collect { status ->
+                    when (status) {
+                        is DownloadStatus.Progress -> {
+                            Logger.logDownloadProgress(downloadId, status.percentage)
+                            _uiState.update { 
+                                it.copy(
+                                    downloadProgress = status.percentage,
+                                    downloadStatus = status,
+                                    updateCycleStatus = "📥 Downloading: ${status.percentage}%"
+                                )
+                            }
+                        }
+                        is DownloadStatus.Success -> {
+                            Logger.i("🎉 Download completed - installation will start automatically")
+                            _uiState.update { 
+                                it.copy(
+                                    downloadStatus = status,
+                                    isDownloading = false,
+                                    showInstallDialog = false,
+                                    updateCycleStatus = "✅ Download completed, installing..."
+                                )
+                            }
+                        }
+                        is DownloadStatus.Failed -> {
+                            Logger.e("❌ Download failed: ${status.error}")
+                            _uiState.update { 
+                                it.copy(
+                                    downloadStatus = status,
+                                    isDownloading = false,
+                                    error = "Download failed: ${status.error}",
+                                    updateCycleStatus = "❌ Download failed"
+                                )
+                            }
+                        }
+                        is DownloadStatus.Paused -> {
+                            Logger.w("⏸️ Download paused")
+                            _uiState.update { 
+                                it.copy(
+                                    downloadStatus = status,
+                                    updateCycleStatus = "⏸️ Download paused"
+                                )
+                            }
+                        }
+                        is DownloadStatus.Pending -> {
+                            Logger.i("⏳ Download pending")
+                            _uiState.update { 
+                                it.copy(
+                                    downloadStatus = status,
+                                    updateCycleStatus = "⏳ Download pending"
+                                )
+                            }
+                        }
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Logger.e("❌ Error during download", e)
+                val errorMessage = when {
+                    e.message?.contains("Failed to connect") == true -> 
+                        "Cannot connect to download server. Please check your internet connection."
+                    e.message?.contains("timeout") == true -> 
+                        "Download timeout. Please try again."
+                    e.message?.contains("404") == true -> 
+                        "Download file not found. Please check server configuration."
+                    e.message?.contains("Invalid download URL") == true -> 
+                        "Invalid download URL. Please check server configuration."
+                    else -> "Download failed: ${e.message}"
+                }
+                _uiState.update { 
+                    it.copy(
+                        error = errorMessage,
+                        isDownloading = false,
+                        updateCycleStatus = "❌ Download failed"
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * 🔄 Manual update check (for user-initiated updates)
+     */
+    fun checkForUpdates() {
+        Logger.i("🔄 Manual update check initiated")
+        viewModelScope.launch {
+            try {
+                Logger.i("🔍 Manual update check...")
+                _uiState.update { 
+                    it.copy(
+                        isLoading = true, 
+                        error = null,
+                        updateCycleStatus = "🔍 Manual update check..."
+                    )
+                }
+                
+                // Get server version info
+                val serverVersion = apiService.getCurrentServerVersion()
+                val currentVersion = getAppVersion(context) ?: currentVersionName
+                val serverVersionName = serverVersion.currentVersion
+                
+                Logger.i("🔍 Manual check - Current: $currentVersion, Server: $serverVersionName")
+                
+                if (isUpdateNeeded(currentVersion, serverVersionName)) {
+                    Logger.i("✅ Manual check - Update available: $currentVersion -> $serverVersionName")
+                    
+                    // Create update info for dialog
+                    val updateInfo = UpdateInfo(
+                        versionCode = serverVersion.versionCode,
+                        versionName = serverVersionName,
+                        downloadUrl = "https://github.com/kariemSeiam/snapupdate/raw/refs/heads/master/backend/data/apks/SnapUpdate-v$serverVersionName.apk",
+                        releaseNotes = serverVersion.releaseNotes,
+                        isForceUpdate = serverVersion.isForceUpdate
+                    )
+                    
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            updateInfo = updateInfo,
+                            showUpdateDialog = true,
+                            updateCycleStatus = "✅ Update available: $currentVersion -> $serverVersionName"
+                        )
+                    }
+                } else {
+                    Logger.i("✅ Manual check - No update needed")
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            updateCycleStatus = "✅ No update needed - up to date"
+                        )
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Logger.e("❌ Error in manual update check", e)
+                val errorMessage = when {
+                    e.message?.contains("Failed to connect") == true -> 
+                        "Cannot connect to update server. Please check your internet connection."
+                    e.message?.contains("timeout") == true -> 
+                        "Connection timeout. Please try again."
+                    e.message?.contains("404") == true -> 
+                        "Update server not found. Please check server configuration."
+                    else -> "Manual update check failed: ${e.message}"
+                }
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = errorMessage,
+                        updateCycleStatus = "❌ Manual update check failed"
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * 📊 Get server version info
+     */
     fun getServerVersion() {
         viewModelScope.launch {
             try {
@@ -106,6 +431,9 @@ class UpdateViewModel(
         }
     }
     
+    /**
+     * ⬆️ Increment server version
+     */
     fun incrementVersion() {
         viewModelScope.launch {
             try {
@@ -118,9 +446,9 @@ class UpdateViewModel(
                     val major = parts[0].toInt()
                     val minor = parts[1].toInt()
                     
-                    // Check if we've reached the maximum (1.3)
-                    if (major == 1 && minor >= 3) {
-                        throw Exception("Maximum version reached (1.3). Please reset to start a new cycle.")
+                    // Check if we've reached the maximum (1.2)
+                    if (major == 1 && minor >= 2) {
+                        throw Exception("Maximum version reached (1.2). Please reset to start a new cycle.")
                     }
                     
                     "${major}.${minor + 1}"
@@ -144,9 +472,9 @@ class UpdateViewModel(
                     )
                 }
                 
-                // Refresh server version and check for updates
+                // Refresh server version and start update cycle
                 getServerVersion()
-                checkForUpdates()
+                startUpdateCycle()
                 
             } catch (e: Exception) {
                 Logger.e("❌ Error incrementing version", e)
@@ -160,6 +488,9 @@ class UpdateViewModel(
         }
     }
     
+    /**
+     * 🔄 Reset server version
+     */
     fun resetVersion() {
         viewModelScope.launch {
             try {
@@ -181,9 +512,9 @@ class UpdateViewModel(
                     )
                 }
                 
-                // Refresh server version and check for updates
+                // Refresh server version and start update cycle
                 getServerVersion()
-                checkForUpdates()
+                startUpdateCycle()
                 
             } catch (e: Exception) {
                 Logger.e("❌ Error resetting version", e)
@@ -197,6 +528,9 @@ class UpdateViewModel(
         }
     }
     
+    /**
+     * 🎯 Accept update (user-initiated from dialog)
+     */
     fun acceptUpdate() {
         val updateInfo = uiState.value.updateInfo ?: return
         
@@ -209,19 +543,17 @@ class UpdateViewModel(
                         showInstallDialog = true,
                         isDownloading = true,
                         downloadProgress = 0,
-                        downloadStatus = DownloadStatus.Pending
+                        downloadStatus = DownloadStatus.Pending,
+                        updateCycleStatus = "📥 Starting download for ${updateInfo.versionName}..."
                     )
                 }
                 
-                // 🚀 Start download
-                val downloadId = downloadManager.downloadApk(updateInfo.downloadUrl, "SnapUpdate-${updateInfo.versionName}.apk")
+                // Start download
+                val downloadId = downloadManager.downloadApk(updateInfo.downloadUrl, "SnapUpdate-v${updateInfo.versionName}.apk")
                 currentDownloadId = downloadId
                 Logger.i("🚀 Download started with ID: $downloadId")
                 
-                // 🛡️ TRIPLE INSURANCE - Direct monitoring as backup
-                startBulletproofDirectMonitoring(downloadId)
-                
-                // 🎯 BULLETPROOF MONITORING - Main system
+                // Monitor download
                 installManager.monitorDownload(downloadId).collect { status ->
                     when (status) {
                         is DownloadStatus.Progress -> {
@@ -229,27 +561,30 @@ class UpdateViewModel(
                             _uiState.update { 
                                 it.copy(
                                     downloadProgress = status.percentage,
-                                    downloadStatus = status
+                                    downloadStatus = status,
+                                    updateCycleStatus = "📥 Downloading: ${status.percentage}%"
                                 )
                             }
                         }
                         is DownloadStatus.Success -> {
-                            Logger.i("🎉 Download completed successfully - INSTALLATION WILL START AUTOMATICALLY")
+                            Logger.i("🎉 Download completed - installation will start automatically")
                             _uiState.update { 
                                 it.copy(
                                     downloadStatus = status,
                                     isDownloading = false,
-                                    showInstallDialog = false // Automatically close dialog
+                                    showInstallDialog = false,
+                                    updateCycleStatus = "✅ Download completed, installing..."
                                 )
                             }
-                            // 🚀 Installation will be automatically triggered by InstallManager
                         }
                         is DownloadStatus.Failed -> {
                             Logger.e("❌ Download failed: ${status.error}")
                             _uiState.update { 
                                 it.copy(
                                     downloadStatus = status,
-                                    isDownloading = false
+                                    isDownloading = false,
+                                    error = "Download failed: ${status.error}",
+                                    updateCycleStatus = "❌ Download failed"
                                 )
                             }
                         }
@@ -257,7 +592,8 @@ class UpdateViewModel(
                             Logger.w("⏸️ Download paused")
                             _uiState.update { 
                                 it.copy(
-                                    downloadStatus = status
+                                    downloadStatus = status,
+                                    updateCycleStatus = "⏸️ Download paused"
                                 )
                             }
                         }
@@ -265,99 +601,87 @@ class UpdateViewModel(
                             Logger.i("⏳ Download pending")
                             _uiState.update { 
                                 it.copy(
-                                    downloadStatus = status
+                                    downloadStatus = status,
+                                    updateCycleStatus = "⏳ Download pending"
                                 )
                             }
                         }
                     }
                 }
+                
             } catch (e: Exception) {
                 Logger.e("❌ Error during download", e)
+                val errorMessage = when {
+                    e.message?.contains("Failed to connect") == true -> 
+                        "Cannot connect to download server. Please check your internet connection."
+                    e.message?.contains("timeout") == true -> 
+                        "Download timeout. Please try again."
+                    e.message?.contains("404") == true -> 
+                        "Download file not found. Please check server configuration."
+                    e.message?.contains("Invalid download URL") == true -> 
+                        "Invalid download URL. Please check server configuration."
+                    else -> "Download failed: ${e.message}"
+                }
                 _uiState.update { 
                     it.copy(
-                        error = "Download failed: ${e.message}",
-                        isDownloading = false
+                        error = errorMessage,
+                        isDownloading = false,
+                        updateCycleStatus = "❌ Download failed"
                     )
                 }
             }
         }
     }
     
-    // 🛡️ BULLETPROOF DIRECT MONITORING - TRIPLE INSURANCE
-    private fun startBulletproofDirectMonitoring(downloadId: Long) {
-        viewModelScope.launch {
-            Logger.i("🛡️ Starting BULLETPROOF direct monitoring for ID: $downloadId")
-            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            var isCompleted = false
-            var checkCount = 0
-            
-            while (!isCompleted && checkCount < 600) { // Max 10 minutes for large files
-                try {
-                    val query = DownloadManager.Query().setFilterById(downloadId)
-                    val cursor = downloadManager.query(query)
-                    
-                    if (cursor.moveToFirst()) {
-                        val status = cursor.getDownloadStatus()
-                        val progress = cursor.getDownloadProgress()
-                        
-                        Logger.d("🛡️ Direct check $checkCount - Download ID: $downloadId, Status: $status, Progress: $progress%")
-                        
-                        when (status) {
-                            DownloadManager.STATUS_SUCCESSFUL -> {
-                                Logger.i("🎉 BULLETPROOF Direct monitoring detected successful download")
-                                installManager.installApk(downloadId)
-                                isCompleted = true
-                            }
-                            DownloadManager.STATUS_FAILED -> {
-                                Logger.e("❌ BULLETPROOF Direct monitoring detected failed download")
-                                isCompleted = true
-                            }
-                            DownloadManager.STATUS_RUNNING -> {
-                                // Update progress
-                                _uiState.update { 
-                                    it.copy(
-                                        downloadProgress = progress,
-                                        downloadStatus = DownloadStatus.Progress(progress)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    cursor.close()
-                    
-                    checkCount++
-                    delay(2000) // Check every 2 seconds
-                } catch (e: Exception) {
-                    Logger.logError("❌ Error during BULLETPROOF direct monitoring", e)
-                    delay(3000) // Wait longer on error
-                }
-            }
-            
-            if (!isCompleted) {
-                Logger.logError("⏰ BULLETPROOF Direct monitoring timeout for download ID: $downloadId")
-            }
-        }
-    }
-    
+    /**
+     * ❌ Dismiss update dialog
+     */
     fun dismissUpdate() {
         Logger.i("❌ User dismissed update dialog")
         _uiState.update { it.copy(showUpdateDialog = false) }
     }
     
+    /**
+     * 🛡️ Dismiss install dialog
+     */
     fun dismissInstallDialog() {
-        Logger.i("🛡️ User dismissed install dialog - but BULLETPROOF download continues in background")
+        Logger.i("🛡️ User dismissed install dialog")
         _uiState.update { it.copy(showInstallDialog = false) }
-        // 🚀 DON'T STOP THE DOWNLOAD - Let it continue and install automatically
     }
     
+    /**
+     * 🧹 Clear error messages
+     */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
     
+    /**
+     * 🧹 Clear success messages
+     */
+    fun clearSuccessMessage() {
+        // No-op as success messages are not tracked in UpdateUiState
+    }
+    
+    /**
+     * 🧹 Cleanup on view model destruction
+     */
     override fun onCleared() {
         super.onCleared()
-        Logger.i("🧹 UpdateViewModel cleared, cleaning up BULLETPROOF resources")
+        Logger.i("🧹 UpdateViewModel cleared, cleaning up resources")
         installManager.cleanup()
+    }
+    
+    /**
+     * Get current app version from package manager
+     */
+    private fun getAppVersion(context: Context): String? {
+        return try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            packageInfo.versionName
+        } catch (e: PackageManager.NameNotFoundException) {
+            null
+        }
     }
     
     companion object {

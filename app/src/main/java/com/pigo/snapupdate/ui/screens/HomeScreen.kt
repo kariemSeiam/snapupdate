@@ -237,7 +237,7 @@ private fun GitHubRepoChip() {
             .padding(horizontal = 20.dp, vertical = 8.dp)
             .clickable {
                 try {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/pigo/snapupdate"))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/kariemSeiam/snapupdate"))
                     context.startActivity(intent)
                 } catch (e: Exception) {
                     // Handle error if browser is not available
@@ -271,7 +271,7 @@ private fun GitHubRepoChip() {
             }
             
             Text(
-                text = "pigo/snapupdate",
+                text = "kariemSeiam/snapupdate",
                 style = MaterialTheme.typography.labelMedium.copy(
                     color = CleanOnSurface,
                     fontWeight = FontWeight.Medium
@@ -312,7 +312,7 @@ private fun HorizontalVersionCards(uiState: UpdateUiState, currentVersion: Strin
             icon = Icons.Rounded.CloudDownload,
             iconColor = CleanSecondary,
             title = "Available",
-            value = uiState.serverVersion?.currentVersion ?: "1.3",
+            value = uiState.serverVersion?.currentVersion ?: "1.2",
             description = "Latest",
             backgroundColor = CleanSecondary.copy(alpha = 0.1f),
             borderColor = CleanSecondary.copy(alpha = 0.3f)
@@ -423,17 +423,17 @@ private fun CleanStatusCard(uiState: UpdateUiState) {
     }
 
     val statusTitle = when {
-        uiState.isLoading -> "Checking Updates"
+        uiState.isLoading -> "Update Cycle Running"
         uiState.error != null -> "Update Error"
         uiState.updateInfo != null -> "Update Ready"
         else -> "Up to Date"
     }
 
     val statusDescription = when {
-        uiState.isLoading -> "Verifying latest version"
+        uiState.isLoading -> uiState.updateCycleStatus.ifEmpty { "Checking for updates..." }
         uiState.error != null -> uiState.error ?: "An unknown error occurred"
         uiState.updateInfo != null -> "New version available for download"
-        else -> "Latest version installed"
+        else -> uiState.updateCycleStatus.ifEmpty { "Latest version installed" }
     }
 
     val infiniteTransition = rememberInfiniteTransition()
@@ -609,8 +609,7 @@ private fun canIncrementVersion(currentVersion: String?): Boolean {
     return when (currentVersion) {
         "1.0" -> true
         "1.1" -> true
-        "1.2" -> true
-        "1.3" -> false // Max reached
+        "1.2" -> false // Max reached
         else -> true // Allow for other versions
     }
 }

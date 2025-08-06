@@ -21,10 +21,10 @@ def check_update():
         current_version = request.args.get('version', '1.0')
         latest_version = version_manager.get_latest_version()
         
+        # Check if we have a latest version and if it's different from current
         if latest_version and latest_version['versionName'] != current_version:
-            # Get the base URL from the request
-            base_url = request.host_url.rstrip('/')
-            download_url = f"{base_url}/api/v1/download/{latest_version['versionName']}"
+            # Use GitHub download URL directly
+            download_url = latest_version['downloadUrl']
             
             return jsonify({
                 'versionCode': latest_version['versionCode'],
@@ -34,11 +34,12 @@ def check_update():
                 'isForceUpdate': latest_version.get('isForceUpdate', False)
             })
         else:
-            # Return 200 with no update message instead of 404
+            # Return 200 with no update message when versions are the same
             return jsonify({
                 'message': 'No update available',
                 'currentVersion': current_version,
-                'latestVersion': latest_version['versionName'] if latest_version else current_version
+                'latestVersion': latest_version['versionName'] if latest_version else current_version,
+                'hasUpdate': False
             }), 200
             
     except Exception as e:
@@ -67,13 +68,18 @@ def get_all_versions():
 
 @api_bp.route('/download/<version>', methods=['GET'])
 def download_apk(version):
-    """Download APK file for specific version"""
+    """Redirect to GitHub download for specific version"""
     try:
-        apk_path = version_manager.get_apk_path(version)
-        if os.path.exists(apk_path):
-            return send_file(apk_path, as_attachment=True)
+        version_info = version_manager.get_version(version)
+        if version_info and version_info.get('downloadUrl'):
+            # Redirect to GitHub download URL
+            return jsonify({
+                'redirect': True,
+                'downloadUrl': version_info['downloadUrl'],
+                'message': f'Redirecting to GitHub download for version {version}'
+            }), 302
         else:
-            return jsonify({'error': 'APK not found'}), 404
+            return jsonify({'error': 'Version not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -100,23 +106,20 @@ def get_available_apks():
 
 @api_bp.route('/version/increment', methods=['POST'])
 def increment_version():
-    """Increment server version and create new APK"""
+    """Increment server version with GitHub download link"""
     try:
         data = request.get_json()
         new_version = data.get('version')
         release_notes = data.get('releaseNotes', '')
         is_force_update = data.get('isForceUpdate', False)
         
-        # Get the base URL from the request
-        base_url = request.host_url.rstrip('/')
-        download_url = f"{base_url}/api/v1/download/{new_version}"
+        # GitHub download URL will be created in version_manager.add_version()
         
         if version_manager.add_version({
             'versionName': new_version,
             'versionCode': version_manager.get_next_version_code(),
             'releaseNotes': release_notes,
-            'isForceUpdate': is_force_update,
-            'downloadUrl': download_url
+            'isForceUpdate': is_force_update
         }):
             return jsonify({
                 'success': True,
@@ -145,7 +148,7 @@ def get_current_server_version():
 
 @api_bp.route('/version/reset', methods=['POST'])
 def reset_version():
-    """Reset server version to start new cycle"""
+    """Reset server version to start new cycle with GitHub download link"""
     try:
         data = request.get_json()
         target_version = data.get('targetVersion', '1.0')
@@ -155,17 +158,14 @@ def reset_version():
         current_version = version_manager.get_latest_version()
         previous_version = current_version['versionName'] if current_version else '1.0'
         
-        # Get the base URL from the request
-        base_url = request.host_url.rstrip('/')
-        download_url = f"{base_url}/api/v1/download/{target_version}"
+        # GitHub download URL will be created in version_manager.reset_to_version()
         
         # Reset to target version
         if version_manager.reset_to_version({
             'versionName': target_version,
             'versionCode': 1,  # Reset version code to 1
             'releaseNotes': f"{reason} - Reset to {target_version}",
-            'isForceUpdate': False,
-            'downloadUrl': download_url
+            'isForceUpdate': False
         }):
             return jsonify({
                 'success': True,

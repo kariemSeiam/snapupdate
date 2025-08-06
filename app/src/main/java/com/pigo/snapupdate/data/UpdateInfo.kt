@@ -16,9 +16,15 @@ data class UpdateResponse(
     val versionName: String? = null,
     val downloadUrl: String? = null,
     val releaseNotes: String? = null,
-    val isForceUpdate: Boolean = false
+    val isForceUpdate: Boolean = false,
+    val hasUpdate: Boolean = false
 ) {
     fun hasUpdate(): Boolean {
+        // Check if the backend explicitly says there's no update
+        if (hasUpdate == false) {
+            return false
+        }
+        // Otherwise check if we have the required fields for an update
         return versionCode != null && versionName != null && downloadUrl != null
     }
     

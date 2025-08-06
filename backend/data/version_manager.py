@@ -20,7 +20,7 @@ class VersionManager:
         self._init_demo_data()
     
     def _init_demo_data(self):
-        """Initialize demo version data"""
+        """Initialize demo version data with GitHub download links"""
         self.demo_versions = {
             "1.0": {
                 "versionCode": 1,
@@ -48,21 +48,13 @@ class VersionManager:
             }
         }
         self._save_versions()
-        self._create_demo_apks()
+        # Remove auto-creation of APK files - keep them static
+        print("✅ Version manager initialized with GitHub download links")
     
     def _create_demo_apks(self):
-        """Create demo APK files for testing"""
-        for version_name in self.demo_versions.keys():
-            apk_path = self.get_apk_path(version_name)
-            if not os.path.exists(apk_path):
-                with open(apk_path, 'w') as f:
-                    f.write(f"# Demo APK for version {version_name}\n")
-                    f.write(f"# This is a dummy APK file for testing\n")
-                    f.write(f"# Version: {version_name}\n")
-                    f.write(f"# Created: {datetime.now().isoformat()}\n")
-                    f.write(f"# Size: 1.5 MB\n")
-                    f.write(f"# Package: com.pigo.snapupdate\n")
-                    f.write(f"# This file simulates a real APK for download testing\n")
+        """This method is now disabled - APK files are kept static"""
+        print("ℹ️ APK files are kept static - no auto-creation")
+        pass
     
     def _save_versions(self):
         """Save versions to JSON file"""
@@ -121,7 +113,7 @@ class VersionManager:
         return (latest['versionCode'] + 1) if latest else 1
     
     def add_version(self, version_data: Dict) -> bool:
-        """Add new version"""
+        """Add new version with GitHub download link"""
         try:
             versions_file = os.path.join(self.data_dir, 'versions.json')
             versions_data = {}
@@ -131,24 +123,21 @@ class VersionManager:
                     versions_data = json.load(f)
             
             version_name = version_data['versionName']
+            
+            # Create GitHub download link
+            github_download_url = f"https://github.com/kariemSeiam/snapupdate/raw/refs/heads/master/backend/data/apks/SnapUpdate-v{version_name}.apk"
+            
             versions_data[version_name] = {
                 **version_data,
+                'downloadUrl': github_download_url,
                 'createdAt': datetime.now().isoformat() + 'Z'
             }
             
             with open(versions_file, 'w') as f:
                 json.dump(versions_data, f, indent=2)
             
-            # Create APK file
-            apk_path = self.get_apk_path(version_name)
-            with open(apk_path, 'w') as f:
-                f.write(f"# Demo APK for version {version_name}\n")
-                f.write(f"# This is a dummy APK file for testing\n")
-                f.write(f"# Version: {version_name}\n")
-                f.write(f"# Created: {datetime.now().isoformat()}\n")
-                f.write(f"# Size: 1.5 MB\n")
-                f.write(f"# Package: com.pigo.snapupdate\n")
-                f.write(f"# This file simulates a real APK for download testing\n")
+            # Don't create local APK files - keep them static
+            print(f"✅ Added version {version_name} with GitHub download link: {github_download_url}")
             
             self.increment_stat('versions_created')
             return True
@@ -205,15 +194,19 @@ class VersionManager:
             return False
     
     def reset_to_version(self, version_data: Dict) -> bool:
-        """Reset to specific version (keeps all APK files, only resets version management)"""
+        """Reset to specific version with GitHub download link"""
         try:
             versions_file = os.path.join(self.data_dir, 'versions.json')
             version_name = version_data['versionName']
+            
+            # Create GitHub download link
+            github_download_url = f"https://github.com/kariemSeiam/snapupdate/raw/refs/heads/master/backend/data/apks/SnapUpdate-v{version_name}.apk"
             
             # Clear all existing versions and create new reset version
             versions_data = {
                 version_name: {
                     **version_data,
+                    'downloadUrl': github_download_url,
                     'createdAt': datetime.now().isoformat() + 'Z'
                 }
             }
@@ -221,22 +214,8 @@ class VersionManager:
             with open(versions_file, 'w') as f:
                 json.dump(versions_data, f, indent=2)
             
-            # DON'T delete APK files - keep them for app responsiveness
-            # The APK files will remain available for download even after reset
-            # This ensures the app can still install any version when needed
-            
-            # Only create new APK if it doesn't exist
-            apk_path = self.get_apk_path(version_name)
-            if not os.path.exists(apk_path):
-                with open(apk_path, 'w') as f:
-                    f.write(f"# Demo APK for version {version_name}\n")
-                    f.write(f"# This is a dummy APK file for testing\n")
-                    f.write(f"# Version: {version_name}\n")
-                    f.write(f"# Created: {datetime.now().isoformat()}\n")
-                    f.write(f"# Size: 1.5 MB\n")
-                    f.write(f"# Package: com.pigo.snapupdate\n")
-                    f.write(f"# This file simulates a real APK for download testing\n")
-                    f.write(f"# Reset cycle started at {version_name}\n")
+            # Don't create local APK files - keep them static
+            print(f"✅ Reset to version {version_name} with GitHub download link: {github_download_url}")
             
             self.increment_stat('versions_reset')
             return True

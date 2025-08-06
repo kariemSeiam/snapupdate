@@ -7,7 +7,7 @@ import retrofit2.http.Body
 
 interface ApiService {
     @GET("update")
-    suspend fun checkForUpdates(@Query("version") currentVersion: String = "1.0"): UpdateResponse
+    suspend fun checkForUpdates(@Query("version") currentVersion: String): UpdateResponse
 
     @GET("health")
     suspend fun healthCheck(): Map<String, Any>

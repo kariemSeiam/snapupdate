@@ -5,8 +5,10 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import com.pigo.snapupdate.utils.DownloadUtils.getDownloadStatus
+import com.pigo.snapupdate.utils.DownloadUtils.getDownloadUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class AppDownloadManager(private val context: Context) {
 
@@ -39,6 +41,38 @@ class AppDownloadManager(private val context: Context) {
         }
     }
 
+    /**
+     * Validate downloaded APK file
+     */
+    fun validateDownloadedApk(downloadId: Long): Boolean {
+        try {
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val query = DownloadManager.Query().setFilterById(downloadId)
+            val cursor = downloadManager.query(query)
+
+            if (cursor.moveToFirst()) {
+                val status = cursor.getDownloadStatus()
+                if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                    val uriString = cursor.getDownloadUri()
+                    if (uriString != null) {
+                        val file = File(Uri.parse(uriString).path ?: "")
+                        if (file.exists()) {
+                            // Check if file is a valid APK (at least 1MB and has .apk extension)
+                            val isValidApk = file.length() > 1024 * 1024 && file.name.endsWith(".apk")
+                            Logger.i("📦 APK validation: ${file.name}, Size: ${file.length()} bytes, Valid: $isValidApk")
+                            return isValidApk
+                        }
+                    }
+                }
+            }
+            cursor.close()
+            return false
+        } catch (e: Exception) {
+            Logger.e("Error validating downloaded APK: ${e.message}", e)
+            return false
+        }
+    }
+
     fun getDownloadStatus(downloadId: Long): Int {
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val query = DownloadManager.Query().setFilterById(downloadId)
@@ -50,6 +84,27 @@ class AppDownloadManager(private val context: Context) {
             DownloadManager.STATUS_FAILED
         }.also {
             cursor.close()
+        }
+    }
+
+    /**
+     * Get downloaded file path
+     */
+    fun getDownloadedFilePath(downloadId: Long): String? {
+        try {
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val query = DownloadManager.Query().setFilterById(downloadId)
+            val cursor = downloadManager.query(query)
+
+            return if (cursor.moveToFirst()) {
+                val uriString = cursor.getDownloadUri()
+                if (uriString != null) {
+                    Uri.parse(uriString).path
+                } else null
+            } else null
+        } catch (e: Exception) {
+            Logger.e("Error getting downloaded file path: ${e.message}", e)
+            return null
         }
     }
 } 

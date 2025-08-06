@@ -63,17 +63,34 @@ class InstallManager(private val context: Context) {
             if (downloadedFileUri != null) {
                 val file = File(Uri.parse(downloadedFileUri).path!!)
                 Logger.logInstallationAttempt(file.absolutePath)
-                installApkFile(file)
+                
+                // Validate APK file before installation
+                val appDownloadManager = AppDownloadManager(context)
+                if (appDownloadManager.validateDownloadedApk(downloadId)) {
+                    installApkFile(file)
+                } else {
+                    Logger.logError("❌ Downloaded file is not a valid APK: ${file.absolutePath}")
+                    showInstallationNotification("❌ Installation failed - invalid APK file")
+                }
             } else {
                 Logger.logError("❌ Download URI is null for download ID: $downloadId")
+                showInstallationNotification("❌ Installation failed - download error")
             }
         } else {
             Logger.logError("❌ Download not successful for download ID: $downloadId")
+            showInstallationNotification("❌ Installation failed - download failed")
         }
         cursor.close()
     }
     
-    private fun installApkFile(file: File) {
+    /**
+     * 🔧 Install APK file directly (public method for storage installation)
+     */
+    fun installApkFile(file: File) {
+        installApkFilePrivate(file)
+    }
+    
+    private fun installApkFilePrivate(file: File) {
         try {
             Logger.i("🔧 Automatically installing APK file: ${file.absolutePath}")
             
@@ -87,10 +104,17 @@ class InstallManager(private val context: Context) {
                 return
             }
             
-            // Check file size
-            if (file.length() == 0L) {
-                Logger.logError("❌ APK file is empty: ${file.absolutePath}")
-                showInstallationNotification("❌ Installation failed - file is empty")
+            // Check file size - must be at least 1MB to be a valid APK
+            if (file.length() < 1024 * 1024) {
+                Logger.logError("❌ APK file is too small (${file.length()} bytes): ${file.absolutePath}")
+                showInstallationNotification("❌ Installation failed - invalid APK file (too small)")
+                return
+            }
+            
+            // Check file extension
+            if (!file.name.endsWith(".apk")) {
+                Logger.logError("❌ File is not an APK: ${file.absolutePath}")
+                showInstallationNotification("❌ Installation failed - not an APK file")
                 return
             }
             

@@ -49,8 +49,8 @@ def main():
     
     print("\n🎯 Backend setup complete!")
     print("🚀 To start the server, run: python server.py")
-    print("📱 Android app will connect to: http://192.168.1.202:5000")
-    print("🌐 Web interface: http://192.168.1.202:5000")
+    print("📱 Android app will connect to: https://geolink.pythonanywhere.com")
+    print("🌐 Web interface: https://geolink.pythonanywhere.com")
     print("=" * 40)
 
 if __name__ == "__main__":

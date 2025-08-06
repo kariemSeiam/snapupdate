@@ -6,8 +6,8 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object NetworkModule {
-    private const val BASE_URL = "http://192.168.1.202:5000/api/v1/" // Updated backend URL
-    
+    private const val BASE_URL = "https://geolink.pythonanywhere.com/api/v1/" // Updated backend URL
+        
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
     }

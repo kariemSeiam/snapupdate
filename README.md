@@ -18,19 +18,9 @@ Complete Android update management with automatic installation and version cycle
 
 ## Screenshots
 
-### Home Screen
-![Home Screen](https://github.com/user-attachments/assets/bc34b812-e14c-49bb-a267-5a8883c6067f)
-
-*Main interface with version cards and action buttons*
-
-### Update Dialog
-![Update Dialog](https://github.com/user-attachments/assets/6d64f145-ba09-4002-87c3-babb429289ff)
-
-*Update confirmation with version information and release notes*
-
-### Install Dialog
-![Install Dialog](https://github.com/user-attachments/assets/bc34b812-e14c-49bb-a267-5a8883c6067f)
-*Download progress with realistic speed and time simulation*
+| Home Screen | Update Dialog | Install Dialog |
+|-------------|---------------|----------------|
+| ![Home Screen](https://github.com/user-attachments/assets/28c4d0ca-1ab6-4c83-8c0e-fa80c5de27ea)<br>*Main interface with version cards and action buttons* | ![Update Dialog](https://github.com/user-attachments/assets/6d64f145-ba09-4002-87c3-babb429289ff)<br>*Update confirmation with version information and release notes* | ![Install Dialog](https://github.com/user-attachments/assets/bc34b812-e14c-49bb-a267-5a8883c6067f)<br>*Download progress with realistic speed and time simulation* |
 
 ---
 

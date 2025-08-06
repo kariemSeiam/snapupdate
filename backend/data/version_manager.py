@@ -26,7 +26,7 @@ class VersionManager:
                 "versionCode": 1,
                 "versionName": "1.0",
                 "releaseNotes": "Initial release with basic update functionality",
-                "downloadUrl": "http://192.168.1.202:5000/api/v1/download/1.0",
+                "downloadUrl": "https://github.com/kariemSeiam/snapupdate/raw/refs/heads/master/backend/data/apks/SnapUpdate-v1.0.apk",
                 "isForceUpdate": False,
                 "createdAt": "2024-01-01T00:00:00Z"
             },
@@ -34,7 +34,7 @@ class VersionManager:
                 "versionCode": 2,
                 "versionName": "1.1",
                 "releaseNotes": "Enhanced UI/UX with Material 3 design",
-                "downloadUrl": "http://192.168.1.202:5000/api/v1/download/1.1",
+                "downloadUrl": "https://github.com/kariemSeiam/snapupdate/raw/refs/heads/master/backend/data/apks/SnapUpdate-v1.1.apk",
                 "isForceUpdate": False,
                 "createdAt": "2024-01-15T00:00:00Z"
             },
@@ -42,7 +42,7 @@ class VersionManager:
                 "versionCode": 3,
                 "versionName": "1.2",
                 "releaseNotes": "Added auto-installation feature and improved performance",
-                "downloadUrl": "http://192.168.1.202:5000/api/v1/download/1.2",
+                "downloadUrl": "https://github.com/kariemSeiam/snapupdate/raw/refs/heads/master/backend/data/apks/SnapUpdate-v1.2.apk",
                 "isForceUpdate": True,
                 "createdAt": "2024-01-30T00:00:00Z"
             }

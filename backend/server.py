@@ -16,8 +16,8 @@ def main():
     # Create Flask app
     app = create_app()
     
-    # Configuration
-    host = os.getenv('HOST', '0.0.0.0')
+    # Configuration - Expert setup with localhost
+    host = os.getenv('HOST', 'localhost')
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('DEBUG', 'True').lower() == 'true'
     
@@ -25,6 +25,7 @@ def main():
     print(f"🔧 Debug mode: {debug}")
     print(f"📱 Android app will connect to: http://10.0.2.2:{port}")
     print(f"🌐 Web interface: http://localhost:{port}")
+    print(f"🔗 API Base URL: http://localhost:{port}/api/v1")
     print("\n📋 Available endpoints:")
     print("   - GET /api/v1/update - Check for updates")
     print("   - GET /api/v1/health - Health check")
@@ -47,4 +48,4 @@ def main():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(host='0.0.0.0', port=5000, debug=True) 
+    app.run(host='localhost', port=5000, debug=True) 

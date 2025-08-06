@@ -171,7 +171,7 @@ Get server statistics.
 **Response:**
 ```json
 {
-  "total_versions": 4,
+  "total_versions": 3,
   "versions_created": 2,
   "versions_updated": 1,
   "versions_deleted": 0,

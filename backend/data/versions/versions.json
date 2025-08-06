@@ -1,10 +1,26 @@
 {
   "1.0": {
-    "versionName": "1.0",
     "versionCode": 1,
-    "releaseNotes": "Reset to start new version cycle - Reset to 1.0",
+    "versionName": "1.0",
+    "releaseNotes": "🎯 Initial Release - Core update functionality with version checking, download management, and basic UI components. Implements fundamental app update infrastructure.",
+    "downloadUrl": "https://github.com/kariemSeiam/snapupdate/raw/refs/heads/master/backend/data/apks/SnapUpdate-v1.0.apk",
     "isForceUpdate": false,
-    "downloadUrl": "http://192.168.1.202:5000/api/v1/download/1.0",
-    "createdAt": "2025-08-06T20:13:29.778979Z"
+    "createdAt": "2024-01-01T00:00:00Z"
+  },
+  "1.1": {
+    "versionCode": 2,
+    "versionName": "1.1",
+    "releaseNotes": "🎨 UI/UX Enhancement - Upgraded to Material 3 design system with improved navigation, enhanced visual components, and refined user experience. Better accessibility and modern interface.",
+    "downloadUrl": "https://github.com/kariemSeiam/snapupdate/raw/refs/heads/master/backend/data/apks/SnapUpdate-v1.1.apk",
+    "isForceUpdate": false,
+    "createdAt": "2024-01-15T00:00:00Z"
+  },
+  "1.2": {
+    "versionCode": 3,
+    "versionName": "1.2",
+    "releaseNotes": "⚡ Performance & Automation - Added auto-installation capabilities, optimized app performance, enhanced download management, and improved system integration. Critical security updates included.",
+    "downloadUrl": "https://github.com/kariemSeiam/snapupdate/raw/refs/heads/master/backend/data/apks/SnapUpdate-v1.2.apk",
+    "isForceUpdate": true,
+    "createdAt": "2024-01-30T00:00:00Z"
   }
 }
